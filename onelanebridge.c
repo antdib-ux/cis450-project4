@@ -72,10 +72,31 @@ void CrossBridge(vehicle_info *vehicle) {
 
 // Release this vehicle's spot and admit eligible waiting vehicles.
 void ExitBridge(vehicle_info *vehicle) {
+
+    //"use" vehicle pointer by casting it to void
+    //prevent defined but not used warning
     (void) vehicle;
-    fprintf(stderr, "ExitBridge() is not implemented yet.\n");
-    exit(EXIT_FAILURE);
+
+    //blocking function that waits for semaphore to be made available before making changes to shared variables
+    //when lock is available, hold it so no other thread has access to the shared variables
+    Sem_wait(&state_lock);
+
+    //one car exited; decrement amount on bridge
+    bridge_count--;
+
+    //if count reaches 0, set the direction to empty; flag raised for other vehicles
+    if (bridge_count <= 0) {
+        bridge_dir = EMPTY;
+    }
+
+    //signal to waiting vehicles that they can enter
+    //do this before releasing lock, so queued vehicles' spots are reserved first (prevent race condition)
+    AdmitWaitingVehicles();
+
+    //release semaphore; no longer needed by function
+    Sem_post(&state_lock);
 }
+
 
 // Set up bridge, run vehicle threads, clean up at the end.
 int main(int argc, char *argv[]) {
