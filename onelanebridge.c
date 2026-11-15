@@ -47,11 +47,33 @@ void *VehicleAction(void *arg) {
     return NULL;
 }
 
-// Wait until this vehicle is allowed to enter the bridge.
+//Wait until this vehicle is allowed to enter the bridge
+//Shared Variables:
+//                  READ:  state_lock, vehicles (id and dir), queue_count
+//                  WRITE: state_lock, waiting_queue, waiting_count, vehicle_gate
 void ArriveBridge(vehicle_info *vehicle) {
-    (void) vehicle;
-    fprintf(stderr, "ArriveBridge() is not implemented yet.\n");
-    exit(EXIT_FAILURE);
+
+    //blocking function that waits for semaphore to be made available before making changes to shared variables
+    //when lock is available, hold it so no other thread has access to the shared variables
+    Sem_wait(&state_lock);
+
+    //send vehicle to the back of the queue
+    //queue in FCFS order by default
+    waiting_queue[queue_count++] = vehicle->id;
+
+    //increment this direction's waiting count for GREEDY
+    waiting_count[vehicle->dir]++;
+
+    //admit next awaiting vehicle in FCFS or GREEDY
+    //do this before releasing lock, so queued vehicles' spots are reserved first (prevent race condition)
+    AdmitWaitingVehicles();
+
+    //release semaphore; no longer needed by function
+    Sem_post(&state_lock);
+
+    //blocking function now checks for this vehicle's gate semaphore to be made available
+    //when available, vehicle logic will continue in VehicleAction()
+    Sem_wait(&vehicle_gate[vehicle->id]);
 }
 
 // Caller holds state_lock; reserve safe spots before signaling waiting vehicles.
@@ -71,11 +93,34 @@ void CrossBridge(vehicle_info *vehicle) {
 }
 
 // Release this vehicle's spot and admit eligible waiting vehicles.
+//Shared Variables:
+//                  READ:  state_lock, bridge_count
+//                  WRITE: state_lock, bridge_count, bridge_dir
 void ExitBridge(vehicle_info *vehicle) {
+
+    //"use" vehicle pointer by casting it to void
+    //prevent defined but not used warning
     (void) vehicle;
-    fprintf(stderr, "ExitBridge() is not implemented yet.\n");
-    exit(EXIT_FAILURE);
+
+    //blocking function that waits for semaphore to be made available before making changes to shared variables
+    //when lock is available, hold it so no other thread has access to the shared variables
+    Sem_wait(&state_lock);
+
+    //one car exited; decrement amount on bridge
+    bridge_count--;
+
+    //if count reaches 0, set the direction to empty for FCS or GREEDY
+    if (bridge_count <= 0) {
+        bridge_dir = EMPTY;
+    }
+
+    //admit next awaiting vehicle in FCFS or GREEDY; same purpose as ArriveBridge()
+    AdmitWaitingVehicles();
+
+    //release semaphore; no longer needed by function
+    Sem_post(&state_lock);
 }
+
 
 // Set up bridge, run vehicle threads, clean up at the end.
 int main(int argc, char *argv[]) {
