@@ -7,8 +7,8 @@ in the same direction.
 ## Team Responsibilities
 
 - Anthony: main(), VehicleAction(), CrossBridge(), headers, and Makefile
-- Layth: ArriveBridge()
-- Jillian: ExitBridge()
+- Layth: AdmitWaitingVehicles()
+- Jillian: ArriveBridge(), ExitBridge()
 
 Use individual branches and pull requests for changes. Discuss changes
 to shared variables or function interfaces before implementing them.
@@ -23,9 +23,9 @@ make
 
 ## Current Status
 
-The framework is set up. Arrival, admission, and exit logic are unfinished,
+The framework is set up. Admissionlogic is unfinished,
 so crossing runs are currently disabled. AdmitWaitingVehicles() is a
-proposed shared helper for the team to review.
+confirmed shared helper.
 
 ## Run After Integration
 
