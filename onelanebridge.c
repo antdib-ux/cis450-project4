@@ -77,9 +77,47 @@ void ArriveBridge(vehicle_info *vehicle) {
 }
 
 // Caller holds state_lock; reserve safe spots before signaling waiting vehicles.
+// Scans waiting_queue (in arrival order) and admits every vehicle that is allowed to enter
+// right now. Each admitted vehicle is reserved in its spot, removed from the queue, and open its gate.
 void AdmitWaitingVehicles(void) {
-    fprintf(stderr, "AdmitWaitingVehicles() is not implemented yet.\n");
-    exit(EXIT_FAILURE);
+    int i = 0;
+
+    // Stop as soon as the bridge is full or when every waiting vehicle has been checked.
+    while (i < queue_count && bridge_count < BRIDGE_LIMIT) {
+        int id = waiting_queue[i];
+        int dir = vehicles[id].dir;
+
+        // Allow vehicles if the bridge is empty or already flowing its way.
+        if (bridge_dir == EMPTY || bridge_dir == dir) {
+
+            // Reserve the spot now so two callers can't both admit into the last slot.
+            // This is why bridge_count includes vehicles that are signaled but haven't started crossing.
+            bridge_dir = dir;
+            bridge_count++;
+            waiting_count[dir]--;
+
+            // Remove this vehicle from the queue by shifting later entries left.
+            for (int j = i; j < queue_count - 1; j++) {
+                waiting_queue[j] = waiting_queue[j + 1];
+            }
+            queue_count--;
+
+            // Open this vehicle's gate so its Sem_wait in ArriveBridge returns.
+            Sem_post(&vehicle_gate[id]);
+
+            // Don't advance i, the next vehicle just shifted into slot i.
+        }
+        else if (crossing_policy == FCFS) {
+            // FCFS: the oldest waiting vehicle is blocked by direction,
+            // so nobody behind it may pass, stop scanning.
+            break;
+        }
+        else {
+            // GREEDY: skip over the opposite direction vehicle and keep looking
+            // for same direction vehicles further back.
+            i++;
+        }
+    }
 }
 
 // Print the crossing time and simulate five seconds without holding state_lock.
