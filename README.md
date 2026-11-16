@@ -22,14 +22,14 @@ make
 ```
 
 ## Current Status
+Greedy and FCFS admission logic is implemented. Both policies were
+tested with the provided 13-vehicle sequence, and all vehicles
+completed crossing.
 
-The framework is set up. Admissionlogic is unfinished,
-so crossing runs are currently disabled. AdmitWaitingVehicles() is a
-confirmed shared helper.
-
-## Run After Integration
+## Run
 
 ```bash
 ./onelanebridge greedy
 ./onelanebridge fcfs
 ```
+
